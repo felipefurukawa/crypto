@@ -1,0 +1,2 @@
+# crypto
+ predicao de crypto
