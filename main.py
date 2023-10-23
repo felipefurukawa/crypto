@@ -11,25 +11,32 @@ from tensorflow.python.keras.models import Sequential
 
 yf.pdr_override()
 
+dias_predicao = 60
+dias_futuros = 30
+
 moeda_crypto = 'BTC'
 moeda_comparativa = 'USD'
 
-start = dt.datetime(2016,1,1)
+start = dt.datetime(2020,1,1) + dt.timedelta(days=dias_predicao)
 end = dt.datetime.now()
 
 data = yf.download('BTC-USD', start, end)
+
+
 
 # Data dataframe
 scaler = MinMaxScaler(feature_range=(0,1))
 scaled_data = scaler.fit_transform(data['Close'].values.reshape(-1,1))
 
-dias_predicao = 60
+
+# Add This Line
+data_before_test = yf.download('BTC-USD', start - dt.timedelta(days=dias_predicao), start)
 
 x_train, y_train = [], []
 
-for x in range(dias_predicao, len(scaled_data)):
+for x in range(dias_predicao, len(scaled_data)-dias_futuros):
     x_train.append(scaled_data[x-dias_predicao:x, 0])
-    y_train.append(scaled_data[x, 0])
+    y_train.append(scaled_data[x+dias_futuros, 0])
 
 x_train, y_train = np.array(x_train), np.array(y_train)
 x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
@@ -59,7 +66,9 @@ teste_fim = dt.datetime.now()
 teste_data = yf.download('BTC-USD', start, end)
 valor_moeda = teste_data['Close'].values
 
-dataset_total = pd.concat((data['Close'], teste_data['Close']), axis=0)
+
+# Modify the line that you have to this
+dataset_total = pd.concat((data_before_test['Close'], teste_data['Close']), axis=0)
 
 model_inputs = dataset_total[len(dataset_total) - len(teste_data) - dias_predicao:].values
 model_inputs = model_inputs.reshape(-1, 1)
@@ -84,3 +93,12 @@ plt.ylabel('Preço')
 plt.legend(loc='upper left')
 plt.show()
 
+#predicao do dia seguinte
+
+real_data = [model_inputs[len(model_inputs) + 1 - dias_predicao:len(model_inputs) + 1, 0]]
+real_data = np.array(real_data)
+real_data = np.reshape(real_data, (real_data.shape[0], real_data.shape[1], 1))
+
+predicao = model.predict(real_data)
+predicao = scaler.inverse_transform(predicao)
+print()
